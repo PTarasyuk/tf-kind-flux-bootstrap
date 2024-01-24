@@ -30,9 +30,9 @@ output "kubeconfig" {
 
 - `kubeconfig` - The path to the kubeconfig file `kind.conf`
 - `server` - Kubernetes API Server URL
-- `client_key` - The base64-encoded client private key data for connecting the cluster
-- `client_cert` - The base64-encoded client certificate data for connecting the cluster
-- `cluster_ca` - The base64-encoded CA Certificate used by the API Server
+- `client_key` - The base64-decoded client key for authenticating to cluster
+- `client_cert` - The base64-encoded client certificate for authenticating to cluster
+- `cluster_ca` - The base64-encoded client verifies the server certificate with this CA cert
 
 ## Requirements
 

@@ -1,3 +1,12 @@
+terraform {
+  required_providers {
+    helm = {
+      source  = "hashicorp/helm"
+      version = ">=2.9.0"
+    }
+  }
+}
+
 module "hc_tls_key" {
   source = "./modules/hc-tls-keys"
 }
@@ -12,17 +21,34 @@ module "github_repository" {
 }
 
 module "kind_cluster" {
-  source              = "./modules/kind-cluster"
-  cluster_name        = "kind-cluster"
-  control_plane_count = 1
+  source       = "./modules/kind-cluster"
+  cluster_name = "kind-cluster"
 }
 
 module "flux_bootstrap" {
-  source                 = "./modules/flux-bootstrap"
-  github_repository      = "${var.github_owner}/${var.flux_github_repo}"
-  private_key            = module.hc_tls_key.private_key_pem
-  host                   = module.kind_cluster.server
-  client_cert            = module.kind_cluster.client_cert
-  client_key             = module.kind_cluster.client_key
-  cluster_ca             = module.kind_cluster.cluster_ca 
+  source            = "./modules/flux-bootstrap"
+  github_repository = "${var.github_owner}/${var.flux_github_repo}"
+  private_key       = module.hc_tls_key.private_key_pem
+  host              = module.kind_cluster.server
+  client_cert       = module.kind_cluster.client_cert
+  client_key        = module.kind_cluster.client_key
+  cluster_ca        = module.kind_cluster.cluster_ca
+}
+
+provider "helm" {
+  kubernetes {
+    host                   = module.kind_cluster.server
+    client_certificate     = module.kind_cluster.client_cert
+    client_key             = module.kind_cluster.client_key
+    cluster_ca_certificate = module.kind_cluster.cluster_ca
+  }
+}
+
+resource "helm_release" "name" {
+  repository       = "oci://ghcr.io/ptarasyuk/charts"
+  chart            = "kbot"
+  name             = "kbot"
+  namespace        = "kbot"
+  create_namespace = true
+  version          = "v1.0.7-ab619a0-linux-amd64"
 }

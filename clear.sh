@@ -1,0 +1,1 @@
+rm -rf .terraform/ .terraform.lock.hcl kind.conf terraform.tfstate terraform.tfstate.backup

@@ -4,24 +4,24 @@ output "kubeconfig" {
 }
 
 output "server" {
-  value       = kind_cluster.cluster.server
+  value       = kind_cluster.this.endpoint
   description = "Kubernetes API Server URL"
 }
 
 output "client_key" {
   sensitive   = true
-  value       = base64decode(kind_cluster.cluster.client_key_data)
-  description = "The base64-decoded client private key data for connecting the cluster"
+  value       = kind_cluster.this.client_key
+  description = "The base64-decoded client key for authenticating to cluster"
 }
 
 output "client_cert" {
   sensitive   = true
-  value       = base64decode(kind_cluster.cluster.client_certificate_data)
-  description = "The base64-encoded client certificate data for connecting the cluster"
+  value       = kind_cluster.this.client_certificate
+  description = "The base64-encoded client certificate for authenticating to cluster"
 }
 
 output "cluster_ca" {
   sensitive   = true
-  value       = base64decode(kind_cluster.cluster.ca_certificate_data)
-  description = "The base64-encoded CA Certificate used by the API Server"
+  value       = kind_cluster.this.cluster_ca_certificate
+  description = "The base64-encoded client verifies the server certificate with this CA cert"
 }

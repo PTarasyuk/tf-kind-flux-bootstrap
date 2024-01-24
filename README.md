@@ -9,7 +9,7 @@ module "kind-flux-bootstrap" {
   source            = "github.com/PTarasyuk/tf-kind-flux-bootstrap"
   github_owner      = <YOUR_GITHUB_USERNAME>
   github_token      = <YOUR_GITHUB_TOKEN>
-  flux_gh_repo_name = <FLUX_GITHUB_REPOSITORY> # As exemple "fluxt-gitops"
+  flux_gh_repo_name = <FLUX_GITHUB_REPOSITORY> # As exemple "flux-gitops"
 }
 ```
 

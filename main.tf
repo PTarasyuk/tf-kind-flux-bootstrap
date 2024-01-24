@@ -1,54 +1,68 @@
-terraform {
-  required_providers {
-    helm = {
-      source  = "hashicorp/helm"
-      version = ">=2.9.0"
+resource "tls_private_key" "this" {
+  algorithm   = "ECDSA"
+  ecdsa_curve = "P256"
+}
+
+data "tls_public_key" "private_key_pem" {
+  private_key_pem = tls_private_key.this.private_key_pem
+}
+
+provider "github" {
+  owner = var.github_owner
+  token = var.github_token
+}
+
+resource "github_repository" "this" {
+  name       = var.flux_gh_repo_name
+  visibility = var.flux_gh_repo_visibility
+  auto_init  = true
+}
+
+resource "github_repository_deploy_key" "this" {
+  title      = var.flux_gh_repo_key_title
+  repository = github_repository.this.name
+  key        = tls_private_key.this.public_key_openssh
+  read_only  = false
+}
+
+locals {
+  k8s_config_path = pathexpand("${path.root}/kind.conf")
+}
+
+resource "kind_cluster" "this" {
+  name            = var.cluster_name
+  kubeconfig_path = local.k8s_config_path
+  node_image      = "kindest/node:v1.27.1"
+  wait_for_ready  = true
+  kind_config {
+    kind        = "Cluster"
+    api_version = "kind.x-k8s.io/v1alpha4"
+    node {
+      role = "control-plane"
+    }
+    node {
+      role = "worker"
     }
   }
 }
 
-module "hc_tls_key" {
-  source = "./modules/hc-tls-keys"
-}
-
-module "github_repository" {
-  source                   = "./modules/gh-repository"
-  github_owner             = var.github_owner
-  github_token             = var.github_token
-  repository_name          = var.flux_github_repo
-  public_key_openssh       = module.hc_tls_key.public_key_openssh
-  public_key_openssh_title = "flux0"
-}
-
-module "kind_cluster" {
-  source       = "./modules/kind-cluster"
-  cluster_name = "kind-cluster"
-}
-
-module "flux_bootstrap" {
-  source            = "./modules/flux-bootstrap"
-  github_repository = "${var.github_owner}/${var.flux_github_repo}"
-  private_key       = module.hc_tls_key.private_key_pem
-  host              = module.kind_cluster.server
-  client_cert       = module.kind_cluster.client_cert
-  client_key        = module.kind_cluster.client_key
-  cluster_ca        = module.kind_cluster.cluster_ca
-}
-
-provider "helm" {
-  kubernetes {
-    host                   = module.kind_cluster.server
-    client_certificate     = module.kind_cluster.client_cert
-    client_key             = module.kind_cluster.client_key
-    cluster_ca_certificate = module.kind_cluster.cluster_ca
+provider "flux" {
+  kubernetes = {
+    host                   = kind_cluster.this.endpoint
+    client_certificate     = kind_cluster.this.client_certificate
+    client_key             = kind_cluster.this.client_key
+    cluster_ca_certificate = kind_cluster.this.cluster_ca_certificate
+  }
+  git = {
+    url = "ssh://git@github.com/${var.github_owner}/${var.flux_gh_repo_name}.git"
+    ssh = {
+      username    = "git"
+      private_key = tls_private_key.this.private_key_pem
+    }
   }
 }
 
-resource "helm_release" "name" {
-  repository       = "oci://ghcr.io/ptarasyuk/charts"
-  chart            = "kbot"
-  name             = "kbot"
-  namespace        = "kbot"
-  create_namespace = true
-  version          = "v1.0.7-ab619a0-linux-amd64"
+resource "flux_bootstrap_git" "this" {
+  depends_on = [github_repository_deploy_key.this]
+  path       = var.flux_target_path
 }
